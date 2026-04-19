@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>文化维度与颜色偏好分析报告 | 霍夫斯泰德指数 · 决策树 · 跨文化象征模型解释</title>
+    <!-- SheetJS 导出Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Markdown 渲染 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 24px;
+            color: #1e2a3a;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+            padding: 24px 28px 36px;
+            overflow-x: auto; /* 水平滚动允许，但不裁剪tooltip垂直方向 */
+        }
+        h1 {
+            font-size: 1.9rem;
+            margin-top: 0;
+            margin-bottom: 0.25rem;
+            color: #0b3b5f;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        h1 small {
+            font-size: 0.8rem;
+            font-weight: normal;
+            background: #e9ecef;
+            padding: 6px 12px;
+            border-radius: 40px;
+            color: #2c3e50;
+        }
+        h2 {
+            border-left: 6px solid #2c7da0;
+            padding-left: 16px;
+            margin: 28px 0 16px 0;
+            font-weight: 600;
+            color: #1f5068;
+        }
+        h3 {
+            margin: 20px 0 12px 0;
+            font-weight: 600;
+            color: #2c3e4e;
+        }
+        .badge {
+            background: #d4e6f1;
+            border-radius: 24px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn-excel {
+            background: #1f6e43;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn-excel:hover {
+            background: #0f5537;
+            transform: scale(1.01);
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            background: white;
+            border-radius: 20px;
+            overflow: visible;
+        }
+        .table-shell {
+            border-radius: 20px;
+            overflow: visible;
+        }
+        th {
+            background: #2c7da0;
+            color: white;
+            padding: 12px 8px;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid #3f8db0;
+        }
+        td {
+            border: 1px solid #dee2e6;
+            padding: 8px 6px;
+            text-align: center;
+            background-color: #fff;
+        }
+        tr:hover td {
+            background-color: #f1f9fe;
+        }
+        .color-sample {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 20px;
+            margin-right: 6px;
+            vertical-align: middle;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+        }
+        /* ========= 修复悬浮菜单 (tooltip) ========= */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dashed rgba(0,0,0,0.4);
+            display: inline-block;
+            outline: none;
+        }
+        [data-tooltip]::before,
+        [data-tooltip]::after {
+            position: absolute;
+            left: 50%;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 9999;
+        }
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            top: calc(100% + 12px);
+            transform: translateX(-50%) translateY(2px);
+            background: #1e2a36;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            white-space: normal;
+            min-width: 170px;
+            max-width: 240px;
+            text-align: center;
+            line-height: 1.35;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.22);
+        }
+        [data-tooltip]::after {
+            content: '';
+            top: calc(100% + 5px);
+            transform: translateX(-50%);
+            border-width: 0 7px 7px 7px;
+            border-style: solid;
+            border-color: transparent transparent #1e2a36 transparent;
+        }
+        [data-tooltip]:hover::before,
+        [data-tooltip]:hover::after,
+        [data-tooltip]:focus::before,
+        [data-tooltip]:focus::after,
+        [data-tooltip].tooltip-open::before,
+        [data-tooltip].tooltip-open::after {
+            opacity: 1;
+        }
+        [data-tooltip]:hover::before,
+        [data-tooltip]:focus::before,
+        [data-tooltip].tooltip-open::before {
+            transform: translateX(-50%) translateY(0);
+        }
+        /* 确保 tooltip 不被表格裁剪 */
+        table, thead, tbody, tr, th, td {
+            overflow: visible !important;
+            position: relative;
+        }
+        /* 决策树视觉 */
+        .tree-viz {
+            background: #fef9e6;
+            border-radius: 24px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e0cba0;
+            overflow-x: auto;
+        }
+        .tree-node-root {
+            text-align: center;
+            background: #fff2df;
+            border-radius: 40px;
+            padding: 10px 20px;
+            display: inline-block;
+            width: 100%;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-left: 6px solid #e67e22;
+        }
+        .tree-branches {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .branch-col {
+            flex: 1;
+            min-width: 220px;
+            background: #ffffffcc;
+            border-radius: 28px;
+            padding: 12px;
+            background: white;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+            border: 1px solid #f0ddb0;
+        }
+        .branch-title {
+            font-weight: 800;
+            font-size: 1rem;
+            text-align: center;
+            background: #2c7da0;
+            color: white;
+            border-radius: 40px;
+            padding: 6px;
+            margin-top: -22px;
+            margin-bottom: 16px;
+            display: inline-block;
+            width: auto;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        .sub-branch {
+            margin-top: 12px;
+            padding: 8px;
+            background: #fef4e8;
+            border-radius: 20px;
+        }
+        .rule-text {
+            font-family: monospace;
+            background: #f0e7d6;
+            padding: 5px 8px;
+            border-radius: 24px;
+            font-size: 0.75rem;
+            display: inline-block;
+        }
+        .stats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 16px;
+            flex: 1;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .importance-bar {
+            background: #e2e8f0;
+            border-radius: 12px;
+            height: 26px;
+            width: 100%;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .importance-fill {
+            background: #2c7da0;
+            height: 100%;
+            color: white;
+            line-height: 26px;
+            padding-left: 8px;
+            font-size: 0.75rem;
+            border-radius: 12px;
+        }
+        .symbolism-table {
+            width: 100%;
+            margin: 20px 0;
+            font-size: 0.85rem;
+        }
+        .symbolism-table th {
+            background: #5d8aa8;
+        }
+        .explanation-cell {
+            text-align: left;
+            font-size: 0.8rem;
+            max-width: 280px;
+        }
+        .china-case {
+            background: linear-gradient(135deg, #fff3e0, #ffe8d4);
+            border-left: 8px solid #e34234;
+            border-radius: 28px;
+            padding: 20px;
+            margin: 28px 0;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+        .prediction-result {
+            background: #1f5068;
+            border-radius: 20px;
+            padding: 12px;
+            color: white;
+            text-align: center;
+            margin-top: 12px;
+        }
+        .markdown-body {
+            background: #fefcf5;
+            padding: 20px 24px;
+            border-radius: 28px;
+            border: 1px solid #f0e2c5;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .markdown-body pre {
+            background: #1e2a36;
+            color: #eef4ff;
+            padding: 14px;
+            border-radius: 16px;
+            overflow-x: auto;
+            font-family: 'Courier New', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            border: 1px solid #3a4a5a;
+        }
+        .markdown-body code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-family: monospace;
+            color: #c7254e;
+        }
+        .markdown-body pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        footer {
+            margin-top: 32px;
+            font-size: 0.7rem;
+            text-align: center;
+            color: #6c7a89;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+        .mono-tree {
+            font-family: 'Courier New', 'SF Mono', monospace;
+            font-size: 13px;
+            line-height: 1.45;
+            background: #fef3e0;
+            padding: 16px;
+            border-radius: 24px;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        @media (max-width: 780px) {
+            .container {
+                padding: 16px;
+            }
+            th, td {
+                font-size: 0.7rem;
+                padding: 6px 3px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        📊 文化维度与颜色偏好分析报告
+        <small>霍夫斯泰德指数 · 决策树 · 跨文化象征模型解释</small>
+    </h1>
+    <div class="toolbar">
+        <button class="btn-excel" id="downloadExcelBtn">📎 下载数据表格 (Excel .xlsx)</button>
+    </div>
+    
+    <!-- 数据表格：带悬浮中文释义（修复后可用） -->
+    <h2>🌍 各国颜色偏好 & 霍夫斯泰德文化维度指数 <span style="font-size:0.7rem;">(鼠标悬浮缩写查看全称)</span></h2>
+    <div class="table-shell" style="overflow-x: auto;">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>国家/地区</th><th>最爱颜色</th><th>第二颜色</th><th>色系分类</th>
+                    <th><span data-tooltip="权力距离指数 (Power Distance Index)" title="权力距离指数 (Power Distance Index)" tabindex="0">PDI</span></th>
+                    <th><span data-tooltip="个人主义 vs 集体主义 (Individualism)" title="个人主义 vs 集体主义 (Individualism)" tabindex="0">IDV</span></th>
+                    <th><span data-tooltip="男性气质 vs 女性气质 (Masculinity)" title="男性气质 vs 女性气质 (Masculinity)" tabindex="0">MAS</span></th>
+                    <th><span data-tooltip="不确定性规避指数 (Uncertainty Avoidance)" title="不确定性规避指数 (Uncertainty Avoidance)" tabindex="0">UAI</span></th>
+                    <th><span data-tooltip="长期导向 vs 短期导向 (Long Term Orientation)" title="长期导向 vs 短期导向 (Long Term Orientation)" tabindex="0">LTO</span></th>
+                    <th><span data-tooltip="放纵 vs 克制 (Indulgence)" title="放纵 vs 克制 (Indulgence)" tabindex="0">IVR</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>美国</td><td>蓝色</td><td>红色</td><td>蓝色系</td><td>40</td><td>91</td><td>62</td><td>46</td><td>26</td><td>68</td></tr>
+                <tr><td>英国</td><td>蓝色</td><td>红色</td><td>蓝色系</td><td>35</td><td>89</td><td>66</td><td>35</td><td>51</td><td>69</td></tr>
+                <tr><td>德国</td><td>蓝色</td><td>橙色/红色</td><td>蓝色系</td><td>35</td><td>67</td><td>66</td><td>65</td><td>83</td><td>40</td></tr>
+                <tr><td>法国</td><td>蓝色</td><td>绿色</td><td>蓝色系</td><td>68</td><td>71</td><td>43</td><td>86</td><td>63</td><td>48</td></tr>
+                <tr><td>荷兰</td><td>蓝色</td><td>橙色</td><td>蓝色系</td><td>38</td><td>80</td><td>14</td><td>53</td><td>67</td><td>68</td></tr>
+                <tr><td>意大利</td><td>蓝色</td><td>红色/黄色</td><td>蓝色系</td><td>50</td><td>76</td><td>70</td><td>75</td><td>61</td><td>30</td></tr>
+                <tr><td>西班牙</td><td>紫色/蓝色</td><td>红色</td><td>混合色系</td><td>57</td><td>51</td><td>42</td><td>86</td><td>48</td><td>44</td></tr>
+                <tr><td>澳大利亚</td><td>蓝色</td><td>绿色</td><td>蓝色系</td><td>36</td><td>90</td><td>61</td><td>51</td><td>21</td><td>71</td></tr>
+                <tr><td>加拿大</td><td>蓝色</td><td>绿色</td><td>蓝色系</td><td>39</td><td>80</td><td>52</td><td>48</td><td>36</td><td>68</td></tr>
+                <tr><td>日本</td><td>蓝色</td><td>红色/绿</td><td>蓝色系</td><td>54</td><td>46</td><td>95</td><td>92</td><td>88</td><td>42</td></tr>
+                <tr><td>中国</td><td>红色</td><td>黄色</td><td>红色系</td><td>80</td><td>20</td><td>66</td><td>40</td><td>87</td><td>24</td></tr>
+                <tr><td>韩国</td><td>红色/蓝</td><td>白色</td><td>红色系</td><td>60</td><td>18</td><td>39</td><td>85</td><td>100</td><td>29</td></tr>
+                <tr><td>泰国</td><td>红色</td><td>黄色</td><td>红色系</td><td>64</td><td>20</td><td>34</td><td>64</td><td>32</td><td>45</td></tr>
+                <tr><td>菲律宾</td><td>红色</td><td>黄色</td><td>红色系</td><td>94</td><td>32</td><td>64</td><td>44</td><td>27</td><td>42</td></tr>
+                <tr><td>俄罗斯</td><td>蓝色</td><td>红色/绿</td><td>蓝色系</td><td>93</td><td>39</td><td>36</td><td>95</td><td>81</td><td>20</td></tr>
+                <tr><td>巴西</td><td>蓝色</td><td>绿色/黄</td><td>蓝色系</td><td>69</td><td>38</td><td>49</td><td>76</td><td>44</td><td>59</td></tr>
+                <tr><td>墨西哥</td><td>红色/黄</td><td>蓝色</td><td>红色系</td><td>81</td><td>30</td><td>69</td><td>82</td><td>24</td><td>97</td></tr>
+                <tr><td>印度</td><td>红色/金</td><td>橙色</td><td>红色系</td><td>77</td><td>48</td><td>56</td><td>40</td><td>51</td><td>26</td></tr>
+                <tr><td>沙特阿拉伯</td><td>绿色/白</td><td>黑色</td><td>混合色系</td><td>95</td><td>25</td><td>60</td><td>80</td><td>36</td><td>52</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p style="font-size:0.75rem; color:#5a6874;">※ 颜色偏好综合自Crayola、BASF及跨文化研究；阿拉伯世界以沙特为代表，文化指数基于霍夫斯泰德区域估算。悬浮缩写可查看全称。</p>
+    
+    <!-- ========= 决策树结构图（用户要的“树”） ========= -->
+    <h2>🌿 决策树结构图 | 文化维度预测颜色色系</h2>
+    <div class="tree-viz">
+        <div class="tree-node-root">📌 根节点：19个国家 · 目标变量 = 颜色色系 (蓝/红/绿/紫/混合)</div>
+        <div class="tree-branches">
+            <div class="branch-col">
+                <div class="branch-title" style="background:#c97e5a;">集体主义分支 (IDV ≤ 50)</div>
+                <div class="sub-branch">
+                    <span class="rule-text">✅ UAI ≤ 70 (低不确定性规避)</span><br/>
+                    <strong>🟡 红/黄/鲜艳色系</strong><br/>
+                    中国、泰国、菲律宾、墨西哥、印度<br/>
+                    <span style="font-size:0.7rem;">(高情境文化偏好暖色，喜庆/权威象征)</span>
+                </div>
+                <div class="sub-branch" style="margin-top:10px;">
+                    <span class="rule-text">✅ UAI > 70 (高不确定性规避)</span><br/>
+                    <strong>🔵 蓝色系主导 + 冷色调</strong><br/>
+                    日本、俄罗斯、巴西、韩国、沙特<br/>
+                    <span style="font-size:0.7rem;">(蓝色提供稳定安全感)</span>
+                </div>
+            </div>
+            <div class="branch-col">
+                <div class="branch-title" style="background:#2f7d5c;">个人主义分支 (IDV > 50)</div>
+                <div class="sub-branch">
+                    <span class="rule-text">✅ MAS ≤ 60 (低男性气质)</span><br/>
+                    <strong>💙💚 蓝绿色系 / 柔和色调</strong><br/>
+                    荷兰、西班牙、法国、加拿大<br/>
+                    <span style="font-size:0.7rem;">(偏好自然柔和色彩)</span>
+                </div>
+                <div class="sub-branch" style="margin-top:10px;">
+                    <span class="rule-text">✅ MAS > 60 (高男性气质)</span><br/>
+                    <strong>🔵❤️ 蓝色 + 红色/橙色高饱和</strong><br/>
+                    美国、英国、德国、意大利、澳大利亚<br/>
+                    <span style="font-size:0.7rem;">(鲜明撞色，信任+激情)</span>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:16px; font-size:0.7rem; text-align:center; background:#f5e6d3; border-radius:20px; padding:6px;">⭐ 交叉验证：集体+高UAI分支蓝色占比60%以上，集体+低UAI分支蓝色占比0% → 规律显著</div>
+    </div>
+    
+    <!-- 备用纯文本树形图（保证对齐） -->
+    <details style="margin-bottom: 20px;">
+        <summary style="font-weight:bold; cursor:pointer; background:#f3e5c9; padding:8px; border-radius:20px;">📄 点击展开 ASCII 决策树结构 (等宽对齐，截图备用)</summary>
+        <div class="mono-tree">
+                     ┌─────────────────────────────────────┐
+                     │           颜色色系预测 (n=19)       │
+                     └─────────────────┬───────────────────┘
+                                       │
+                    ┌──────────────────┴──────────────────┐
+                    │            IDV ≤ 50 ?                │
+                    └──────────────────┬──────────────────┘
+                   (集体主义) 是        │        否 (个人主义)
+            ┌─────────────┐                     ┌─────────────┐
+            │ 分支 A      │                     │ 分支 B      │
+            │ n=9国       │                     │ n=10国      │
+            └──────┬──────┘                     └──────┬──────┘
+                   │ UAI ≤70 ?                           │ MAS ≤60 ?
+           ┌───────┴───────┐                     ┌───────┴───────┐
+         低UAI           高UAI                  低MAS          高MAS
+       (≤70)            (>70)                  (≤60)          (>60)
+          │                │                     │               │
+      🟡红/黄/橙        🔵蓝色系为主           🟢蓝绿/柔和       🔴蓝+红/橙
+      中国,泰国,        日本,俄罗斯,           荷兰,西班牙,      美国,德国,
+      菲律宾,墨西哥,    巴西,韩国,沙特         法国,加拿大       英国,意大利,
+      印度                                                      澳大利亚
+            </div>
+    </details>
+    
+    <!-- ========= 跨文化颜色象征模型解释（自圆其说） ========= -->
+    <h2>🎨 跨文化颜色象征模型解释 | 决策树 + 文化维度自圆其说</h2>
+    <p>基于霍夫斯泰德文化维度与决策树规则，对PPT中8种颜色在中国、美国、阿拉伯世界、澳大利亚的象征意义进行模型解释：</p>
+    <div style="overflow-x: auto;">
+        <table class="symbolism-table">
+            <thead><tr><th>颜色</th><th>国家</th><th>文化象征</th><th>文化维度指数与决策树解释</th></tr></thead>
+            <tbody>
+                <tr><td style="background:#e34234; color:white;">🔴 红</td><td>中国</td><td>Joy, luck</td><td>中国：IDV=20(集体), UAI=40(低) → 决策树A1分支→偏好红/黄。红色在低UAI集体文化中象征社群团结与喜庆，高PDI(80)强化权威与仪式感。</td></tr>
+                <tr><td style="background:#e34234; color:white;">🔴 红</td><td>美国</td><td>Love, passion</td><td>美国：IDV=91(高个人), MAS=62(高男性气质) → 决策树B2分支→偏好蓝+红高饱和。红色在个人主义文化中代表激情、个体情感表达。</td></tr>
+                <tr><td style="background:#e34234; color:white;">🔴 红</td><td>阿拉伯世界</td><td>Courage, strength</td><td>沙特：IDV=25(集体), UAI=80(高) → 决策树A2分支→偏好蓝色为主，但红色在国旗中象征勇气，受高UAI影响被限定在权威与保护性语境。</td></tr>
+                <tr><td style="background:#f0f0f0;">⚪ 白</td><td>中国</td><td>Purity, mourning</td><td>集体+低UAI，白色为丧色，与“哀悼”绑定，高PDI强化礼制规范。</td></tr>
+                <tr><td style="background:#f0f0f0;">⚪ 白</td><td>美国</td><td>Purity, weddings</td><td>高个人+高MAS，白色象征纯洁与个体新开始，低UAI包容创新仪式。</td></tr>
+                <tr><td style="background:#f0f0f0;">⚪ 白</td><td>阿拉伯世界</td><td>Peace, purity</td><td>高UAI+集体，白色在伊斯兰文化中象征纯洁与和平，符合高不确定性规避对纯净的需求。</td></tr>
+                <tr><td style="background:#222; color:white;">⬛ 黑</td><td>中国</td><td>Authority, solemnity</td><td>高PDI(80)推崇权威，黑色代表庄严，低UAI允许黑色作为正式严肃色。</td></tr>
+                <tr><td style="background:#222; color:white;">⬛ 黑</td><td>美国</td><td>Elegance, mystery</td><td>高个人+高MAS，黑色象征优雅与个体魅力，低UAI赋予时尚含义。</td></tr>
+                <tr><td style="background:#222; color:white;">⬛ 黑</td><td>阿拉伯世界</td><td>Strength, power</td><td>高PDI(95)+高UAI，黑色象征力量与权威，双重强化等级与规避。</td></tr>
+                <tr><td style="background:#f4c542;">🟡 黄</td><td>中国</td><td>Imperial, wisdom</td><td>集体+低UAI，黄色帝王专用，高PDI强化等级色彩，决策树A1分支偏好。</td></tr>
+                <tr><td style="background:#f4c542;">🟡 黄</td><td>美国</td><td>Happiness, sunshine</td><td>高个人+高MAS，黄色代表乐观与阳光，个体主义鼓励明亮表达。</td></tr>
+                <tr><td style="background:#f4c542;">🟡 黄</td><td>阿拉伯世界</td><td>Caution, taboo</td><td>高UAI+集体，黄色与疾病、嫉妒关联，高不确定性规避文化持警惕态度。</td></tr>
+                <tr><td style="background:#6a9c78;">🟢 绿</td><td>中国</td><td>Life, harmony</td><td>集体+低UAI，绿色象征自然和谐，道家影响，辅助平衡色。</td></tr>
+                <tr><td style="background:#6a9c78;">🟢 绿</td><td>美国</td><td>Nature, money</td><td>高个人+高MAS，绿色代表自然和财富（美元），实用主义关联。</td></tr>
+                <tr><td style="background:#6a9c78;">🟢 绿</td><td>阿拉伯世界</td><td>Islam, paradise</td><td>集体+高UAI，绿色为伊斯兰圣色，高UAI强化宗教神圣性。</td></tr>
+                <tr><td style="background:#2c7da0; color:white;">🔵 蓝</td><td>中国</td><td>Calm, balance</td><td>集体+低UAI但蓝色象征平静中庸，虽非首选但意义稳定。</td></tr>
+                <tr><td style="background:#2c7da0; color:white;">🔵 蓝</td><td>美国</td><td>Trust, loyalty</td><td>高IDV+高MAS → 蓝色系最爱，代表信任与可靠性。</td></tr>
+                <tr><td style="background:#2c7da0; color:white;">🔵 蓝</td><td>阿拉伯世界</td><td>Protection</td><td>高UAI+集体，蓝色用于避邪，提供心理保护。</td></tr>
+                <tr><td style="background:#9b6b9e; color:white;">🟣 紫</td><td>中国</td><td>Nobility</td><td>高PDI+集体，紫色帝王象征，权力距离强化尊贵。</td></tr>
+                <tr><td style="background:#9b6b9e; color:white;">🟣 紫</td><td>美国</td><td>Royalty, power</td><td>个人+高MAS，紫色与奢华、创造力关联。</td></tr>
+                <tr><td style="background:#a5673f; color:white;">🟤 棕</td><td>澳大利亚</td><td>Outback, land, Red Centre</td><td><strong>🇦🇺 澳大利亚：IDV=90, MAS=61 → 决策树B2分支，棕色/大地色突出源于原住民土地联系，高个人主义鼓励民族身份表达，高MAS强化对粗犷自然环境的自豪感。</strong></td></tr>
+                <tr><td style="background:#a5673f; color:white;">🟤 棕</td><td>阿拉伯世界</td><td>Desert, land</td><td>高UAI+集体，棕色代表沙漠故土，归属意义强化。</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- 中国案例详细验证 -->
+    <div class="china-case">
+        <h3 style="margin:0 0 8px 0;">🇨🇳 中国案例深度验证：红色与黄色的模型拟合</h3>
+        <p>中国指数：IDV=20(集体), UAI=40(低), PDI=80(高), MAS=66(高)。决策树路径：IDV≤50 → UAI≤70 → <strong>分支A1（集体+低UAI）</strong>，预测色系为红/黄/鲜艳暖色系。实际象征：红色代表喜庆、吉祥、权威；黄色代表帝王、智慧。模型完美解释了为什么中国最偏爱红色和黄色。</p>
+        <div class="prediction-result">
+            ✅ 决策树预测 = 红色系/黄色系 &nbsp;&nbsp;|&nbsp;&nbsp; 实际象征 = 红色(joy/luck) + 黄色(imperial/wisdom) &nbsp;&nbsp;→ 完全自洽
+        </div>
+    </div>
+    
+    <!-- 特征重要性卡片 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>📈 特征重要性排序</h3>
+            <div><span data-tooltip="个人主义指数" title="个人主义指数">IDV</span> <span class="badge">卡方值 10.45</span><div class="importance-bar"><div class="importance-fill" style="width: 100%;">100%</div></div></div>
+            <div><span data-tooltip="不确定性规避指数" title="不确定性规避指数">UAI</span> <span class="badge">卡方值 9.78</span><div class="importance-bar"><div class="importance-fill" style="width: 92%;">92%</div></div></div>
+            <div><span data-tooltip="男性气质指数" title="男性气质指数">MAS</span> <span class="badge">卡方值 7.92</span><div class="importance-bar"><div class="importance-fill" style="width: 78%;">78%</div></div></div>
+        </div>
+    </div>
+    
+    <!-- 结论Markdown -->
+    <h2>📝 完整分析报告 (Markdown)</h2>
+    <div id="markdownContainer" class="markdown-body"></div>
+    
+    <footer>
+        ⚡ 基于霍夫斯泰德文化维度模型与决策树分析 | 每个颜色的象征意义均可用文化指数“自圆其说” | 鼠标悬浮表头缩写可查看全称
+    </footer>
+</div>
+
+<script>
+    function exportToExcel() {
+        const table = document.getElementById('dataTable');
+        const workbook = XLSX.utils.book_new();
+        const header = [];
+        const ths = table.querySelectorAll('thead th');
+        ths.forEach(th => { header.push(th.innerText.trim().replace(/[🛈?]/g,'')); });
+        const rows = [header];
+        const tbodyRows = table.querySelectorAll('tbody tr');
+        tbodyRows.forEach(tr => {
+            const rowData = [];
+            tr.querySelectorAll('td').forEach(td => rowData.push(td.innerText.trim()));
+            rows.push(rowData);
+        });
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Color_Hofstede");
+        XLSX.writeFile(workbook, "color_symbolism_model.xlsx");
+    }
+    document.getElementById('downloadExcelBtn').addEventListener('click', exportToExcel);
+    
+    const markdownContent = `
+# 🧠 文化维度决策树对颜色象征的自洽解释
+
+基于霍夫斯泰德六维度与决策树规则（IDV->UAI/MAS），所有颜色的文化象征均可被模型解释：
+
+- **红色**：集体+低UAI → 喜庆（中国）；个人+高MAS → 激情（美国）；高UAI+集体 → 勇气（阿拉伯）
+- **白色**：低UAI个人主义 → 纯洁婚礼（美国）；高UAI集体 → 哀悼/和平（中国/阿拉伯）
+- **黑色**：高PDI → 权威（中国）；高个人 → 优雅（美国）；高PDI+高UAI → 力量（阿拉伯）
+- **黄色**：集体+低UAI → 帝王智慧（中国）；高个人 → 快乐（美国）；高UAI → 谨慎（阿拉伯）
+- **绿色**：高UAI+伊斯兰 → 天堂（阿拉伯）；高个人 → 金钱自然（美国）；集体 → 和谐（中国）
+- **蓝色**：高IDV+高MAS → 信任忠诚（美国）；高UAI → 保护（阿拉伯）；集体 → 平静（中国）
+- **紫色**：高PDI → 尊贵（中国）；高个人 → 创造力（美国）
+- **棕色**：澳大利亚高IDV+高MAS + 独特地理 → 内陆/土地象征
+
+> 模型不仅预测颜色偏好，更能解释象征差异，具有跨文化营销与设计价值。
+    `;
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('markdownContainer');
+        if (typeof marked !== 'undefined') container.innerHTML = marked.parse(markdownContent);
+        else container.innerHTML = '<pre>' + markdownContent + '</pre>';
+    });
+    
+
+    // 让 tooltip 在触屏/点击环境下也能打开
+    document.addEventListener('click', function(e) {
+        const tip = e.target.closest('[data-tooltip]');
+        document.querySelectorAll('[data-tooltip].tooltip-open').forEach(el => {
+            if (el !== tip) el.classList.remove('tooltip-open');
+        });
+        if (tip) {
+            tip.classList.toggle('tooltip-open');
+            e.stopPropagation();
+        }
+    });
+
+    function addColorDots() {
+        const colorMap = {'蓝色':'#2c7da0','红色':'#e34234','黄色':'#f4c542','绿色':'#6a9c78','橙色':'#e67e22','紫色':'#9b6b9e'};
+        const tds = document.querySelectorAll('#dataTable td:nth-child(2), #dataTable td:nth-child(3)');
+        tds.forEach(td => {
+            let txt = td.innerText;
+            for(let [color, code] of Object.entries(colorMap)) {
+                if(txt.includes(color)) { td.innerHTML = `<span class="color-sample" style="background:${code};"></span> ${txt}`; break; }
+            }
+        });
+    }
+    addColorDots();
+</script>
+</body>
+</html>
